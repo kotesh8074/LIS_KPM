@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Lab License Admin</title>
+    <link rel="stylesheet" href="/admin.css">
+    <script src="/admin.js" defer></script>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Generate Activation Key</h1>
+      <p class="intro">Enter the computer ID shown on the app's activation screen, choose an expiry, then generate a key.</p>
+      <form id="license-form">
+        <label>
+          Admin password
+          <input id="admin-token" type="password" autocomplete="current-password" required>
+        </label>
+        <label>
+          Computer ID
+          <input id="device-id" type="text" maxlength="128" autocomplete="off" required>
+        </label>
+        <label>
+          Expiry date
+          <input id="expires-at" type="date" required>
+        </label>
+        <button id="generate-button" type="submit">Generate key</button>
+      </form>
+      <p id="message" class="message" role="alert" hidden></p>
+      <section id="result" hidden>
+        <label for="activation-key">Send this key to the user</label>
+        <textarea id="activation-key" rows="5" readonly></textarea>
+        <button id="copy-button" class="secondary" type="button">Copy key</button>
+        <p id="expiry-note" class="note"></p>
+      </section>
+    </main>
+  </body>
+</html>

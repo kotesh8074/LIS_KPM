@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  color: #0f172a;
+  font: 16px/1.5 system-ui, sans-serif;
+}
+
+.card {
+  width: min(100%, 480px);
+  padding: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 36px #0f172a14;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.intro,
+.note {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+form,
+#result {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  color: #0f172a;
+  font: inherit;
+}
+
+textarea {
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 9px;
+  background: #0369a1;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+button.secondary {
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #0f172a;
+}
+
+.message {
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.message.success {
+  color: #047857;
+}
