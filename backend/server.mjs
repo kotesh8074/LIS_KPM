@@ -33,6 +33,26 @@ function constantTimeEqual(left, right) {
   return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
 }
 
+function createTicket(licenseId, deviceId, expiresAt, issuedTo, contact, issuedAt, licenseType, privateKey) {
+  const timeUrl = '';
+  const payload = `${licenseId}|${deviceId}|${expiresAt}|${timeUrl}|${issuedTo}|${contact}|${issuedAt}|${licenseType}`;
+  return {
+    licenseId,
+    deviceId,
+    expiresAt,
+    timeUrl,
+    issuedTo,
+    contact,
+    issuedAt,
+    licenseType,
+    signature: sign(
+      'RSA-SHA256',
+      Buffer.from(payload),
+      privateKey
+    ).toString('base64')
+  };
+}
+
 async function readJson(request) {
   const chunks = [];
   let size = 0;
@@ -57,17 +77,6 @@ async function handleRequest(request, response) {
 
   if (request.method === 'GET' && url.pathname === '/health') {
     json(response, 200, { available: true });
-    return;
-  }
-
-  if (request.method === 'GET' && url.pathname === '/api/time') {
-    response.writeHead(200, {
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-store',
-      'Content-Type': 'application/json; charset=utf-8',
-      'X-Content-Type-Options': 'nosniff'
-    });
-    response.end(JSON.stringify({ now: Date.now() }));
     return;
   }
 
@@ -97,34 +106,40 @@ async function handleRequest(request, response) {
     return;
   }
 
-  const privateKeyBase64 = process.env.LICENSE_PRIVATE_KEY_BASE64;
+  let privateKeyBase64 = process.env.LICENSE_PRIVATE_KEY_BASE64;
+  if (!privateKeyBase64) {
+    try {
+      privateKeyBase64 = (await readFile(join(directory, 'license-private-key.txt'), 'utf8')).trim();
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
   if (!privateKeyBase64) {
     json(response, 503, { error: 'License signing is not configured on the server.' });
-    return;
-  }
-  let publicUrl;
-  try {
-    publicUrl = new URL(process.env.LICENSE_PUBLIC_URL);
-  } catch {
-    json(response, 503, { error: 'The public HTTPS service URL is not configured on the server.' });
-    return;
-  }
-  if (publicUrl.protocol !== 'https:'
-    || publicUrl.username
-    || publicUrl.password
-    || publicUrl.pathname !== '/'
-    || publicUrl.search
-    || publicUrl.hash) {
-    json(response, 503, { error: 'Configure LICENSE_PUBLIC_URL as the public HTTPS service origin.' });
     return;
   }
 
   const body = await readJson(request);
   const deviceId = typeof body.deviceId === 'string' ? body.deviceId.trim() : '';
+  const issuedTo = typeof body.issuedTo === 'string' ? body.issuedTo.trim() : '';
+  const contact = typeof body.contact === 'string' ? body.contact.trim() : '';
+  const licenseType = body.licenseType;
   const expiresAt = typeof body.expiresAt === 'string' ? body.expiresAt : '';
   const expiryDate = new Date(`${expiresAt}T00:00:00.000Z`);
   if (!deviceId || deviceId.length > 128) {
     json(response, 400, { error: 'Enter a valid device ID.' });
+    return;
+  }
+  if (!issuedTo || issuedTo.length > 120) {
+    json(response, 400, { error: 'Enter the name of the person or organization receiving this license.' });
+    return;
+  }
+  if (contact.length > 120) {
+    json(response, 400, { error: 'Contact details must be 120 characters or fewer.' });
+    return;
+  }
+  if (!['new', 'renewal'].includes(licenseType)) {
+    json(response, 400, { error: 'Choose new activation or renewal.' });
     return;
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)
@@ -136,30 +151,38 @@ async function handleRequest(request, response) {
   }
 
   const licenseId = randomUUID();
-  const timeUrl = new URL('/api/time', publicUrl).toString();
-  const ticket = {
+  const issuedAt = new Date().toISOString();
+  const ticket = createTicket(
     licenseId,
     deviceId,
     expiresAt,
-    timeUrl,
-    signature: sign(
-      'RSA-SHA256',
-      Buffer.from(`${licenseId}|${deviceId}|${expiresAt}|${timeUrl}`),
-      createPrivateKey(Buffer.from(privateKeyBase64, 'base64').toString('utf8'))
-    ).toString('base64')
-  };
+    issuedTo,
+    contact,
+    issuedAt,
+    licenseType,
+    createPrivateKey(Buffer.from(privateKeyBase64, 'base64').toString('utf8'))
+  );
+  const activationKey = `LAB1-${Buffer.from(JSON.stringify(ticket)).toString('base64url')}`;
   json(response, 201, {
-    activationKey: `LAB1-${Buffer.from(JSON.stringify(ticket)).toString('base64url')}`,
-    expiresAt
+    activationKey,
+    licenseId,
+    deviceId,
+    issuedTo,
+    contact,
+    issuedAt,
+    expiresAt,
+    licenseType
   });
 }
 
 const server = createServer((request, response) => {
   handleRequest(request, response).catch(error => {
-    console.error('License admin request failed:', error);
+    console.error('License service request failed:', error);
     if (!response.headersSent) {
       json(response, error.status || 500, {
-        error: error.status ? error.message : 'Could not create the activation key.'
+        error: error.status
+          ? error.message
+          : 'Could not create the activation key.'
       });
     } else {
       response.destroy(error);
@@ -168,6 +191,7 @@ const server = createServer((request, response) => {
 });
 
 const port = Number(process.env.PORT || 3000);
-server.listen(port, '0.0.0.0', () => {
-  console.log(`License admin page listening on port ${port}.`);
+const host = process.env.HOST || '127.0.0.1';
+server.listen(port, host, () => {
+  console.log(`Offline license generator listening at http://${host}:${port}.`);
 });

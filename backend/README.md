@@ -1,41 +1,54 @@
-# Simple Render setup
+# Offline license setup
 
-## One-time setup
+## Create the signing key once
 
-1. From the project folder, run:
+From the project folder, run:
 
-   ```powershell
-   node backend/scripts/generate-license-keys.mjs
-   ```
+```powershell
+node backend/scripts/generate-license-keys.mjs
+```
 
-   This automatically saves the public key in `.env.local` and the private key in `backend/license-private-key.txt`.
+This saves the public verification key in `.env.local` and the private signing key in `backend/license-private-key.txt`. Keep that private key secret and backed up securely. Build the installer after creating/updating the key pair so the app includes its matching public key.
 
-2. Create a Render **Web Service** from this project:
-   - Root Directory: `backend`
-   - Build Command: `npm install`
-   - Start Command: `npm start`
+## Generate an offline activation or renewal key
 
-3. In Render → **Environment**, add these values:
-   - `LICENSE_PRIVATE_KEY_BASE64`: copy the full contents of `backend/license-private-key.txt`
-   - `LICENSE_ADMIN_TOKEN`: choose a password only you know
-   - `LICENSE_PUBLIC_URL`: the public HTTPS origin assigned to your Render service, such as `https://your-service.onrender.com`
+The graphical generator collects the recipient/person or organization, optional contact, computer ID, issue type (new or renewal), and expiry. It displays and can copy the signed key and a summary containing the recipient, device ID, license ID, local generation time, issue type, and expiry.
 
-4. Deploy the service. From the project root, build the Windows installer:
+To open the generator entirely offline from the project folder in PowerShell:
 
-   ```powershell
-   npm run dist:win
-   ```
+```powershell
+$env:LICENSE_ADMIN_TOKEN = Read-Host "Set a temporary local generator password"
+node backend/server.mjs
+```
 
-   The installer is created in `windows-installer\Lab Software Setup 1.0.0.exe`. Send that `.exe` to users.
+Then open `http://127.0.0.1:3000/` in the browser and enter the temporary password. The local server binds to loopback only, reads the signing key from `backend/license-private-key.txt`, and does not require an internet service or database. Keep the signing key private.
 
-   The app can activate and run offline. When the server is reachable, expiry checks use server time; offline, the app starts from the computer clock and counts elapsed time while open. The countdown displays days, hours, minutes, and seconds. Without a trusted clock, changing the computer's clock while offline and restarting the app can affect expiry.
+Alternatively, replace the device ID and expiry in this command:
 
-## Every activation
+```powershell
+node backend/scripts/create-offline-license.mjs <device-id> <YYYY-MM-DD> [issued-to] [contact] [new|renewal]
+```
 
-1. Ask the user to copy **This computer's ID** from the app and send it to you.
-2. Open your Render service URL, enter your admin password, paste the ID, choose the expiry, and click **Generate key**.
-3. Send the key to the user to paste into the app.
+Copy the printed `LAB1-...` key and provide it to the user. The key is signed, expires on the selected date, and is bound to that device ID. The user pastes it into the app for activation or Settings for renewal; neither action requires internet. Previously issued signed `LAB1-` keys remain valid.
 
-Keep `backend/license-private-key.txt` and the Render admin password private.
+To build the Windows installer:
 
-Activation keys issued before this trusted-time update do not contain the signed time-service URL. After updating the app, issue replacement keys for existing users.
+```powershell
+npm run dist:win
+```
+
+Changing the computer's clock can affect offline expiry checks.
+
+## Windows installer security
+
+- The installer must be signed with your organization's trusted Windows code-signing certificate to show a verified publisher. Keep the PFX file and password private; configure them as `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables on the build machine before running `npm run dist:win`.
+- Without a trusted certificate, Windows may show an unknown-publisher or SmartScreen warning. Signing reduces publisher warnings but cannot guarantee that every antivirus product will never report a false positive.
+- Do not ask users to disable antivirus. Scan the generated installer with Microsoft Defender and submit any suspected false positive to the antivirus vendor for review.
+
+## Automatic local backups
+
+The installed desktop app creates an `Auto Backup` folder under the current Windows user's AppData directory by default. In **Backup & Database Utilities**, choose every minute, daily (default), weekly, or monthly; choose another writable folder if needed; or create a backup immediately. Scheduled backups run while the app is open and the newest 30 automatic backups are retained.
+
+## Account recovery
+
+The sign-in page's **Forgot password?** flow accepts the account username or email and an internal local recovery key. The key is stored internally with the app database and is intentionally not displayed or editable in Settings. The same settings section lets the signed-in administrator change their username, display name, and password; copy the device ID; view license issue details; and renew with a signed offline key before expiry.

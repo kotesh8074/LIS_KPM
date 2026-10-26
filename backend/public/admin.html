@@ -11,27 +11,43 @@
   <body>
     <main class="card">
       <h1>Generate Activation Key</h1>
-      <p class="intro">Enter the computer ID shown on the app's activation screen, choose an expiry, then generate a key.</p>
+      <p class="intro">Issue or renew a signed offline license. This local generator works without internet; keep its signing key private.</p>
       <form id="license-form">
         <label>
-          Admin password
+          Generator password
           <input id="admin-token" type="password" autocomplete="current-password" required>
+        </label>
+        <label>
+          License issued to (person / organization)
+          <input id="issued-to" type="text" maxlength="120" autocomplete="name" required>
+        </label>
+        <label>
+          Contact details (optional)
+          <input id="contact" type="text" maxlength="120" autocomplete="off">
         </label>
         <label>
           Computer ID
           <input id="device-id" type="text" maxlength="128" autocomplete="off" required>
         </label>
         <label>
+          License action
+          <select id="license-type">
+            <option value="new">New activation</option>
+            <option value="renewal">Renewal</option>
+          </select>
+        </label>
+        <label>
           Expiry date
           <input id="expires-at" type="date" required>
         </label>
-        <button id="generate-button" type="submit">Generate key</button>
+        <button id="generate-button" type="submit">Generate offline key</button>
       </form>
       <p id="message" class="message" role="alert" hidden></p>
       <section id="result" hidden>
         <label for="activation-key">Send this key to the user</label>
         <textarea id="activation-key" rows="5" readonly></textarea>
         <button id="copy-button" class="secondary" type="button">Copy key</button>
+        <button id="copy-details-button" class="secondary" type="button">Copy license details</button>
         <p id="expiry-note" class="note"></p>
       </section>
     </main>

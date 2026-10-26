@@ -38,4 +38,4 @@ await writeFile(privateKeyPath, Buffer.from(privateKey, 'utf8').toString('base64
 console.log('Setup complete.');
 console.log('Public key saved to the project .env.local file.');
 console.log(`Private key saved here: ${privateKeyPath}`);
-console.log('Copy the contents of that file into Render as LICENSE_PRIVATE_KEY_BASE64.');
+console.log('Keep the private key secret. Use create-offline-license.mjs to issue signed offline licenses.');
